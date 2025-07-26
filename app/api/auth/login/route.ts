@@ -1,5 +1,6 @@
 // app/api/auth/login/route.ts
-import { NextResponse } from 'next/server';
+
+import { NextResponse, type NextRequest } from 'next/server';
 import { dbConnect } from '@/lib/mongodb';
 import User from '@/models/User';
 import bcrypt from 'bcryptjs';
@@ -12,8 +13,7 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin': ORIGIN,
   'Access-Control-Allow-Methods': 'POST,OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-   'Access-Control-Allow-Credentials': 'true'
-  
+  'Access-Control-Allow-Credentials': 'true',
 };
 
 export async function OPTIONS() {
@@ -24,7 +24,7 @@ export async function OPTIONS() {
   });
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const { username, password }: { username: string; password: string } = await req.json();
 
@@ -52,24 +52,25 @@ export async function POST(req: Request) {
       );
     }
 
-    const token = await new SignJWT({ id: user._id })
+    // Create the JWT
+    const token = await new SignJWT({ id: user._id.toString() })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
       .setExpirationTime('1h')
       .sign(new TextEncoder().encode(SECRET_KEY));
 
-    // Build the response, set the cookie, and attach CORS headers
+    // Build response, set cookie, attach CORS headers
     const response = NextResponse.json(
-      { message: 'Login successful' },
+      { message: 'Login successful', username: user.username },
       { status: 200, headers: CORS_HEADERS }
     );
+
     response.cookies.set('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 3600,
       sameSite: 'none',
-
+      path: '/',
+      maxAge: 60 * 60, // 1 hour
     });
 
     return response;
