@@ -1,28 +1,67 @@
+// middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'your_secret_key';
+const ORIGIN = 'https://serenity-peach.vercel.app';
+
+// List of pages you want to protect with JWT
+const PROTECTED_PATHS = [
+  '/dashboard',
+  '/Input1',
+  '/Input2',
+  '/journel',
+  '/community',
+];
 
 export async function middleware(request: NextRequest) {
-  const token = request.cookies.get('token')?.value;
+  const { pathname } = request.nextUrl;
 
-  // If no token, redirect to login
-  if (!token) {
-    return NextResponse.redirect(new URL('/auth/login', request.url));
+  // 1) CORS for API routes
+  if (pathname.startsWith('/api/')) {
+    // Preflight
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': ORIGIN,
+          'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
+    }
+
+    // Real API request — inject CORS headers and continue
+    const response = NextResponse.next();
+    response.headers.set('Access-Control-Allow-Origin', ORIGIN);
+    response.headers.set('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    return response;
   }
 
-  try {
-    // Verify the JWT token using jose
-    await jwtVerify(token, new TextEncoder().encode(SECRET_KEY));
-    return NextResponse.next(); // Proceed to the requested route
-  } catch (error) {
-    console.error('Invalid token:', error);
-    return NextResponse.redirect(new URL('/auth/login', request.url)); // Redirect to login on error
+  // 2) JWT auth for protected pages
+  if (PROTECTED_PATHS.some((p) => pathname === p)) {
+    const token = request.cookies.get('token')?.value;
+    if (!token) {
+      // No token → redirect to login
+      return NextResponse.redirect(new URL('/auth/login', request.url));
+    }
+    try {
+      await jwtVerify(token, new TextEncoder().encode(SECRET_KEY));
+      // valid → proceed
+      return NextResponse.next();
+    } catch {
+      // invalid or expired → redirect
+      return NextResponse.redirect(new URL('/auth/login', request.url));
+    }
   }
+
+  // 3) Everything else — just continue
+  return NextResponse.next();
 }
 
-// Protect specific routes
 export const config = {
-  matcher: ['/dashboard', '/Input1', '/Input2','/journel','/community'], // Protect these routes
+  // Apply middleware to both API routes and your protected pages
+  matcher: ['/api/:path*', ...PROTECTED_PATHS],
 };
