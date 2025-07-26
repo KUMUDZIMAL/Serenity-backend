@@ -8,7 +8,7 @@ const ORIGIN = 'https://serenity-peach.vercel.app';
 
 // List of pages you want to protect with JWT
 const PROTECTED_PATHS = [
-  '/dashboard',
+ 
   '/Input1',
   '/Input2',
   '/journel',
