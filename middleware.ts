@@ -28,6 +28,7 @@ export async function middleware(request: NextRequest) {
           'Access-Control-Allow-Origin': ORIGIN,
           'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+           'Access-Control-Allow-Credentials': 'true'
         },
       });
     }
@@ -37,6 +38,7 @@ export async function middleware(request: NextRequest) {
     response.headers.set('Access-Control-Allow-Origin', ORIGIN);
     response.headers.set('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
     return response;
   }
 
